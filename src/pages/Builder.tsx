@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getHunt, saveHunt, uploadImage } from "../api";
 import type { Hunt, Clue } from "../types";
 import GraphEditor from "../components/GraphEditor";

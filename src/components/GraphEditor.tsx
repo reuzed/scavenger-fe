@@ -21,7 +21,12 @@ import type { Clue, Room } from "../types";
 const clueNodeType = "clue";
 const infoNodeType = "info";
 
-function ClueNode({ data, selected }: NodeProps<{ label: string; isExit?: boolean }>) {
+type ClueNodeData = { label: string; isExit?: boolean };
+type InfoNodeData = { label: string };
+type ClueNodeType = Node<ClueNodeData, typeof clueNodeType>;
+type InfoNodeType = Node<InfoNodeData, typeof infoNodeType>;
+
+function ClueNode({ data, selected }: NodeProps<ClueNodeType>) {
   return (
     <div
       className={`relative rounded border-2 px-3 py-2 text-sm ${
@@ -36,7 +41,7 @@ function ClueNode({ data, selected }: NodeProps<{ label: string; isExit?: boolea
   );
 }
 
-function InfoNode({ data, selected }: NodeProps<{ label: string }>) {
+function InfoNode({ data, selected }: NodeProps<InfoNodeType>) {
   return (
     <div
       className={`relative rounded border-2 border-dashed px-3 py-2 text-sm ${
@@ -53,7 +58,7 @@ function InfoNode({ data, selected }: NodeProps<{ label: string }>) {
 const nodeTypes: NodeTypes = {
   [clueNodeType]: ClueNode,
   [infoNodeType]: InfoNode,
-};
+} as NodeTypes;
 
 function cluesToFlow(clues: Record<string, Clue>): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
@@ -103,9 +108,9 @@ export default function GraphEditor({
   rooms,
   selectedGroupId,
   updateGroupClues,
-  selectedClueId,
+  selectedClueId: _selectedClueId,
   onSelectClue,
-  selectedEdgeId,
+  selectedEdgeId: _selectedEdgeId,
   onSelectEdge,
 }: GraphEditorProps) {
   const { nodes: initialNodes, edges: initialEdges } = cluesToFlow(clues);
@@ -129,10 +134,11 @@ export default function GraphEditor({
   }, [clues]);
 
   const isValidConnection = useCallback(
-    (conn: Connection) => {
-      if (!conn.source || !conn.target || conn.source === conn.target) return false;
+    (conn: Connection | Edge) => {
+      const connection = conn as Connection;
+      if (!connection.source || !connection.target || connection.source === connection.target) return false;
       // Info nodes can only have incoming edges (no outgoing)
-      const source = clues[conn.source];
+      const source = clues[connection.source];
       return !source?.is_info;
     },
     [clues]
@@ -196,6 +202,7 @@ export default function GraphEditor({
       answer_config: {
         match_type: "case_insensitive",
         allowed_answers: [],
+        max_edit_distance: 2,
         wrong_answer_messages: {},
         default_wrong_message: "That's not quite right. Try again!",
       },
@@ -218,6 +225,7 @@ export default function GraphEditor({
       answer_config: {
         match_type: "case_insensitive",
         allowed_answers: [],
+        max_edit_distance: 2,
         wrong_answer_messages: {},
         default_wrong_message: "",
       },
