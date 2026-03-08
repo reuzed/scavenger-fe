@@ -119,8 +119,8 @@ export default function GraphEditor({
 
   useEffect(() => {
     const { nodes: n, edges: e } = cluesToFlow(clues);
-    setNodes((prev) => {
-      const byId = new Map(prev.map((p) => [p.id, p]));
+    setNodes((prev: Node[]) => {
+      const byId = new Map(prev.map((p: Node) => [p.id, p]));
       return n.map((node) => ({
         ...node,
         position: byId.get(node.id)?.position ?? node.position,
@@ -154,7 +154,7 @@ export default function GraphEditor({
         ...c,
         [conn.target!]: { ...target, dependencies: deps },
       }));
-      setEdges((eds) =>
+      setEdges((eds: Edge[]) =>
         addEdge(
           {
             ...conn,
