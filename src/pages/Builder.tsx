@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getHunt, saveHunt, uploadImage } from "../api";
+import { builderImageUrl, getHunt, saveHunt, uploadImage } from "../api";
 import type { Hunt, Clue } from "../types";
 import GraphEditor from "../components/GraphEditor";
 import ClueEditor from "../components/ClueEditor";
@@ -173,7 +173,7 @@ export default function Builder() {
                   updateGroupClues((clues) => ({ ...clues, [c.id]: c }))
                 }
                 onClose={() => setSelectedClueId(null)}
-                imageUrl={(key) => `/api/builder/hunts/${prefix}/images/${key}`}
+                imageUrl={(key) => builderImageUrl(prefix, key)}
                 onUploadImage={(file) => uploadImage(prefix, file)}
                 onRoomExitChange={(clueId, roomId, isExit) => {
                   updateGroupClues((clues) => {

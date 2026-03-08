@@ -2,7 +2,10 @@
 
 import type { Clue, Hunt } from "./types";
 
-const API = "/api";
+const API =
+  import.meta.env.VITE_API_URL != null && import.meta.env.VITE_API_URL !== ""
+    ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/api`
+    : "/api";
 
 export async function getHunt(prefix: string): Promise<Hunt> {
   const r = await fetch(`${API}/builder/hunts/${prefix}`);
@@ -79,5 +82,9 @@ export async function getGroupStats(
 
 export function imageUrl(prefix: string, key: string): string {
   return `${API}/hunts/${prefix}/images/${key}`;
+}
+
+export function builderImageUrl(prefix: string, key: string): string {
+  return `${API}/builder/hunts/${prefix}/images/${key}`;
 }
 
