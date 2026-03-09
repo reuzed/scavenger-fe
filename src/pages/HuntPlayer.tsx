@@ -6,6 +6,8 @@ import {
   getCompletedClues,
   submitAnswer,
   getGroupStats,
+  setRoomNext,
+  setRoomPrev,
   imageUrl,
 } from "../api";
 import type { Clue, Hunt, InfoBlock } from "../types";
@@ -65,6 +67,37 @@ export default function HuntPlayer() {
   const openClue = openClueId ? availableClues.find((c) => c.id === openClueId) : null;
 
   const group = hunt?.groups.find((g) => g.id === groupId);
+  const groupRooms = group?.rooms ?? [];
+  const currentRoom = groupRooms.find((r) => r.id === group?.current_room_id);
+  const sortedRooms = [...groupRooms].sort((a, b) => a.order - b.order);
+  const roomIndex = sortedRooms.findIndex((r) => r.id === group?.current_room_id);
+  const prevRoom = roomIndex > 0 ? sortedRooms[roomIndex - 1] : null;
+  const nextRoom = roomIndex >= 0 && roomIndex < sortedRooms.length - 1 ? sortedRooms[roomIndex + 1] : null;
+  const roomExitCompleted = currentRoom?.exit_clue_id
+    ? completedClues.some((c) => c.id === currentRoom.exit_clue_id)
+    : false;
+  const canGoNext = nextRoom && roomExitCompleted;
+
+  const handleRoomNext = async () => {
+    if (!prefix || !groupId || !canGoNext) return;
+    try {
+      await setRoomNext(prefix, groupId);
+      refresh();
+    } catch (e) {
+      setMessage({ text: String(e), ok: false });
+    }
+  };
+
+  const handleRoomPrev = async () => {
+    if (!prefix || !groupId || !prevRoom) return;
+    try {
+      await setRoomPrev(prefix, groupId);
+      refresh();
+    } catch (e) {
+      setMessage({ text: String(e), ok: false });
+    }
+  };
+
   const completedSet = new Set(completedClues.map((c) => c.id));
   const visibleInfoBlocks: InfoBlock[] = (group?.info_blocks ?? []).filter(
     (ib) => ib.visible_from_start || ib.dependencies.every((d) => completedSet.has(d))
@@ -82,8 +115,30 @@ export default function HuntPlayer() {
     <div className="min-h-screen bg-stone-100 text-stone-900">
       <header className="border-b border-stone-300 bg-white px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">{hunt.name}</h1>
-          <div className="flex gap-2">
+          <div>
+            <h1 className="text-lg font-semibold">{hunt.name}</h1>
+            {currentRoom && (
+              <p className="text-sm text-stone-500">Room: {currentRoom.name}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 border-r border-stone-200 pr-2">
+              <button
+                onClick={handleRoomPrev}
+                disabled={!prevRoom}
+                className="rounded border border-stone-300 px-2 py-1 text-sm hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ← Prev room
+              </button>
+              <button
+                onClick={handleRoomNext}
+                disabled={!canGoNext}
+                title={!roomExitCompleted && nextRoom ? "Complete the room exit clue first" : undefined}
+                className="rounded border border-stone-300 px-2 py-1 text-sm hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next room →
+              </button>
+            </div>
             <button
               onClick={loadStats}
               className="rounded border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-50"

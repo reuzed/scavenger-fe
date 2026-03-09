@@ -3,7 +3,7 @@ import type { Clue, AnswerValidationConfig, Room } from "../types";
 
 interface ClueEditorProps {
   clue: Clue;
-  hunt: { rooms: Room[] };
+  rooms: Room[];
   onChange: (clue: Clue) => void;
   onClose: () => void;
   imageUrl: (key: string) => string;
@@ -18,7 +18,7 @@ const MATCH_TYPES = [
   { value: "contains", label: "Contains" },
 ] as const;
 
-export default function ClueEditor({ clue, hunt, onChange, onClose, imageUrl, onUploadImage, onRoomExitChange }: ClueEditorProps) {
+export default function ClueEditor({ clue, rooms, onChange, onClose, imageUrl, onUploadImage, onRoomExitChange }: ClueEditorProps) {
   const [answersText, setAnswersText] = useState(clue.answer_config.allowed_answers.join("\n"));
   const [wrongMessagesText, setWrongMessagesText] = useState(
     () => Object.entries(clue.answer_config.wrong_answer_messages).map(([k, v]) => `${k}: ${v}`).join("\n")
@@ -120,7 +120,7 @@ export default function ClueEditor({ clue, hunt, onChange, onClose, imageUrl, on
                 onChange={(e) => update({ room_id: e.target.value })}
                 className="mt-1 w-full rounded border border-stone-300 px-2 py-1.5 text-sm"
               >
-                {hunt.rooms.map((r) => (
+                {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>

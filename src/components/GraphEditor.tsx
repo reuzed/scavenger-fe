@@ -94,6 +94,7 @@ function cluesToFlow(clues: Record<string, Clue>): { nodes: Node[]; edges: Edge[
 interface GraphEditorProps {
   clues: Record<string, Clue>;
   rooms: Room[];
+  selectedRoomId: string | null;
   selectedGroupId: string | null;
   updateGroupClues: (updater: (clues: Record<string, Clue>) => Record<string, Clue>) => void;
   selectedClueId: string | null;
@@ -106,6 +107,7 @@ interface GraphEditorProps {
 export default function GraphEditor({
   clues,
   rooms,
+  selectedRoomId,
   selectedGroupId,
   updateGroupClues,
   selectedClueId: _selectedClueId,
@@ -190,12 +192,12 @@ export default function GraphEditor({
   }, [onSelectClue, onSelectEdge]);
 
   const addClue = () => {
-    const room = rooms[0];
+    const roomId = selectedRoomId ?? rooms[0]?.id ?? "r1";
     const id = `c${Date.now()}`;
     const clue: Clue = {
       id,
       name: `Clue ${Object.keys(clues).length + 1}`,
-      room_id: room?.id ?? "r1",
+      room_id: roomId,
       text: "",
       image_keys: [],
       dependencies: [],
@@ -213,12 +215,12 @@ export default function GraphEditor({
   };
 
   const addInfo = () => {
-    const room = rooms[0];
+    const roomId = selectedRoomId ?? rooms[0]?.id ?? "r1";
     const id = `i${Date.now()}`;
     const clue: Clue = {
       id,
       name: `Info ${Object.keys(clues).length + 1}`,
-      room_id: room?.id ?? "r1",
+      room_id: roomId,
       text: "",
       image_keys: [],
       dependencies: [],
@@ -246,22 +248,22 @@ export default function GraphEditor({
       <div className="flex items-center gap-2 border-b border-stone-300 bg-white px-3 py-2">
         <button
           onClick={addClue}
-          disabled={!selectedGroupId}
+          disabled={!selectedGroupId || !selectedRoomId}
           className="rounded bg-stone-700 px-3 py-1.5 text-sm text-white hover:bg-stone-800 disabled:opacity-50"
         >
           + Add clue
         </button>
         <button
           onClick={addInfo}
-          disabled={!selectedGroupId}
+          disabled={!selectedGroupId || !selectedRoomId}
           className="rounded border border-stone-400 bg-white px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100 disabled:opacity-50"
         >
           + Add information
         </button>
         <span className="text-sm text-stone-500">
-          {selectedGroupId
+          {selectedGroupId && selectedRoomId
             ? "Drag from one node to another to add a dependency. Click an edge to view it."
-            : "Select a group to add clues."}
+            : "Select a room and group to add clues."}
         </span>
       </div>
       <div className="flex-1">

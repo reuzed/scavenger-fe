@@ -50,6 +50,7 @@ export interface Room {
 export interface Group {
   id: string;
   name: string;
+  rooms: Room[];
   clues: Record<string, Clue>;
   info_blocks: InfoBlock[];
   completed_clues: string[];
@@ -60,7 +61,6 @@ export interface Hunt {
   id: string;
   prefix: string;
   name: string;
-  rooms: Room[];
   groups: Group[];
   created_at?: string;
   updated_at?: string;

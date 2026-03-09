@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { builderImageUrl, getHunt, saveHunt, uploadImage } from "../api";
 import type { Hunt, Clue } from "../types";
 import GraphEditor from "../components/GraphEditor";
@@ -9,7 +9,6 @@ const DEFAULT_HUNT: Hunt = {
   id: "",
   prefix: "",
   name: "",
-  rooms: [],
   groups: [],
 };
 
@@ -17,6 +16,7 @@ export default function Builder() {
   const [prefix, setPrefix] = useState("");
   const [prefixInput, setPrefixInput] = useState("");
   const [hunt, setHunt] = useState<Hunt>(DEFAULT_HUNT);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedClueId, setSelectedClueId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -29,11 +29,15 @@ export default function Builder() {
       const h = await getHunt(p);
       setHunt(h);
       setPrefix(p);
-      // Auto-select first group so clues load into the editor
+      // Auto-select first group and room so clues load into the editor
       if (h.groups?.length) {
         setSelectedGroupId(h.groups[0].id);
+        const rooms = h.groups[0].rooms ?? [];
+        const sortedRooms = [...rooms].sort((a, b) => a.order - b.order);
+        setSelectedRoomId(sortedRooms[0]?.id ?? null);
       } else {
         setSelectedGroupId(null);
+        setSelectedRoomId(null);
       }
       setSelectedClueId(null);
       setSelectedEdgeId(null);
@@ -43,10 +47,10 @@ export default function Builder() {
         id: crypto.randomUUID(),
         prefix: p,
         name: "",
-        rooms: [{ id: "r1", name: "Room 1", order: 0, clues: [] }],
         groups: [],
       });
       setPrefix(p);
+      setSelectedRoomId(null);
       setSelectedGroupId(null);
       setSelectedClueId(null);
       setSelectedEdgeId(null);
@@ -76,8 +80,19 @@ export default function Builder() {
   };
 
   const selectedGroup = selectedGroupId ? hunt.groups.find((g) => g.id === selectedGroupId) : null;
-  const clues = selectedGroup?.clues ?? {};
-  const selectedClue = selectedClueId ? clues[selectedClueId] : null;
+  const rooms = selectedGroup?.rooms ?? [];
+  const allClues = selectedGroup?.clues ?? {};
+  const clues =
+    selectedRoomId && selectedGroup
+      ? Object.fromEntries(
+          Object.entries(allClues).filter(([, c]) => c.room_id === selectedRoomId)
+        )
+      : allClues;
+  const selectedClue = selectedClueId && clues[selectedClueId] ? clues[selectedClueId] : null;
+
+  useEffect(() => {
+    if (selectedRoomId || selectedGroupId) setSelectedClueId(null);
+  }, [selectedRoomId, selectedGroupId]);
 
   const updateGroupClues = (updater: (clues: Record<string, Clue>) => Record<string, Clue>) => {
     if (!selectedGroupId) return;
@@ -153,7 +168,8 @@ export default function Builder() {
           <div className="flex-1 border-r border-stone-300">
             <GraphEditor
               clues={clues}
-              rooms={hunt.rooms}
+              rooms={rooms}
+              selectedRoomId={selectedRoomId}
               selectedGroupId={selectedGroupId}
               updateGroupClues={updateGroupClues}
               selectedClueId={selectedClueId}
@@ -168,31 +184,48 @@ export default function Builder() {
               <ClueEditor
                 key={selectedClue.id}
                 clue={selectedClue}
-                hunt={hunt}
+                rooms={rooms}
                 onChange={(c) =>
                   updateGroupClues((clues) => ({ ...clues, [c.id]: c }))
                 }
                 onClose={() => setSelectedClueId(null)}
                 imageUrl={(key) => builderImageUrl(prefix, key)}
                 onUploadImage={(file) => uploadImage(prefix, file)}
-                onRoomExitChange={(clueId, roomId, isExit) => {
+                onRoomExitChange={(clueId: string, roomId: string, isExit: boolean) => {
                   updateGroupClues((clues) => {
                     const c = clues[clueId];
                     if (!c) return clues;
-                    return { ...clues, [clueId]: { ...c, is_room_exit: isExit } };
+                    let next: Record<string, Clue> = { ...clues, [clueId]: { ...c, is_room_exit: isExit } };
+                    if (isExit) {
+                      for (const [cid, clue] of Object.entries(next) as [string, Clue][]) {
+                        if (cid !== clueId && clue.room_id === roomId && clue.is_room_exit) {
+                          next = { ...next, [cid]: { ...clue, is_room_exit: false } };
+                        }
+                      }
+                    }
+                    return next;
                   });
-                  updateHunt((h) => ({
-                    ...h,
-                    rooms: h.rooms.map((r) => ({
-                      ...r,
-                      exit_clue_id:
-                        isExit && r.id === roomId
-                          ? clueId
-                          : r.exit_clue_id === clueId
-                            ? undefined
-                            : r.exit_clue_id,
-                    })),
-                  }));
+                  if (selectedGroupId) {
+                    updateHunt((h) => ({
+                      ...h,
+                      groups: h.groups.map((g) =>
+                        g.id === selectedGroupId
+                          ? {
+                              ...g,
+                              rooms: g.rooms.map((r) => ({
+                                ...r,
+                                exit_clue_id:
+                                  isExit && r.id === roomId
+                                    ? clueId
+                                    : r.exit_clue_id === clueId
+                                      ? undefined
+                                      : r.exit_clue_id,
+                              })),
+                            }
+                          : g
+                      ),
+                    }));
+                  }
                 }}
               />
             ) : selectedEdgeId ? (
@@ -221,11 +254,13 @@ export default function Builder() {
                   updateHunt={updateHunt}
                   selectedGroupId={selectedGroupId}
                   onSelectGroup={setSelectedGroupId}
+                  selectedRoomId={selectedRoomId}
+                  onSelectRoom={setSelectedRoomId}
                 />
                 <p className="text-sm text-stone-500">
-                  {selectedGroupId
+                  {selectedRoomId && selectedGroupId
                     ? "Click a node to edit a clue, or an edge to see the dependency."
-                    : "Select a group to edit its clues."}
+                    : "Select a room and group to edit clues."}
                 </p>
               </div>
             )}

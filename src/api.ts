@@ -66,6 +66,18 @@ export async function submitAnswer(
   return r.json();
 }
 
+export async function setRoomNext(prefix: string, groupId: string): Promise<{ room_id: string; room_name: string }> {
+  const r = await fetch(`${API}/hunts/${prefix}/groups/${groupId}/room/next`, { method: "POST" });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function setRoomPrev(prefix: string, groupId: string): Promise<{ room_id: string; room_name: string }> {
+  const r = await fetch(`${API}/hunts/${prefix}/groups/${groupId}/room/prev`, { method: "POST" });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 export async function getGroupStats(
   prefix: string,
   groupId: string
