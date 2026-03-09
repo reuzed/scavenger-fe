@@ -9,6 +9,61 @@ const API =
 
 const FETCH_TIMEOUT_MS = 20000;
 const FETCH_RETRIES = 2;
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB (Lambda limit is 6 MB, leave headroom)
+
+async function compressImageIfNeeded(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size <= MAX_IMAGE_SIZE) return file;
+  return new Promise<File>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      const maxDim = 1920;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = (height / width) * maxDim;
+          width = maxDim;
+        } else {
+          width = (width / height) * maxDim;
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      // Use JPEG for compression (PNG has no quality param, stays large)
+      const mime = "image/jpeg";
+      let quality = 0.85;
+      const tryEncode = () => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            if (blob.size <= MAX_IMAGE_SIZE || quality <= 0.3) {
+              const name = file.name.replace(/\.[^.]+$/, ".jpg");
+              resolve(new File([blob], name, { type: mime }));
+            } else {
+              quality -= 0.15;
+              tryEncode();
+            }
+          },
+          mime,
+          quality
+        );
+      };
+      tryEncode();
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 async function fetchWithRetry(
   url: string,
@@ -55,8 +110,9 @@ export async function saveHunt(prefix: string, hunt: Hunt): Promise<void> {
 }
 
 export async function uploadImage(prefix: string, file: File): Promise<{ key: string; url: string }> {
+  const toUpload = await compressImageIfNeeded(file);
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", toUpload);
   const r = await fetchWithRetry(`${API}/builder/hunts/${prefix}/images`, {
     method: "POST",
     body: fd,
