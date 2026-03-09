@@ -221,7 +221,9 @@ export default function HuntPlayer() {
           <h2 className="mb-2 text-sm font-medium text-stone-600">Available clues</h2>
           {availableClues.length === 0 ? (
             <p className="rounded border border-stone-200 bg-white px-4 py-6 text-center text-stone-500">
-              No new clues yet. Complete dependencies to unlock more.
+              {roomExitCompleted
+                ? "Congratulations for solving the room! Press next room to move on."
+                : "No new clues yet. Complete dependencies to unlock more."}
             </p>
           ) : (
             <div className="space-y-2">
